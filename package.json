@@ -1,0 +1,19 @@
+{
+  "name": "plotter-sounds",
+  "version": "1.0.0",
+  "description": "Various midi and audio pen plotting projects",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "midi",
+    "audio",
+    "penplotter"
+  ],
+  "author": "revdancatt",
+  "license": "MIT",
+  "devDependencies": {
+    "standard": "^17.1.0"
+  }
+}
