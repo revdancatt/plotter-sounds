@@ -23,6 +23,8 @@ let resizeTmr = null
 
 // This is also optional, and it used if we are animating the design
 const animated = true
+const allLines = []
+let saveNextPass = false
 let nextFrame = null // requestAnimationFrame, and the ability to clear it
 
 const features = {}
@@ -57,12 +59,30 @@ const setup = () => {
 //  for fxhash
 setup()
 
+const generateCirclePoints = (radius, numberOfPoints) => {
+  const points = []
+  for (let i = 0; i < numberOfPoints; i++) {
+    const angle = (i / numberOfPoints) * (2 * Math.PI)
+    const x = radius * Math.cos(angle)
+    const y = radius * Math.sin(angle)
+    points.push({ x, y })
+  }
+  return points
+}
+
 const handleMidi = (midiData) => {
   const note = midiData[1]
   const volume = midiData[2]
 
+  if (note < features.minNote) features.minNote = note - 2
+  if (note > features.maxNote) features.maxNote = note + 2
+
   // If the volume is > 0 then we need to add a circle to the features.circles dict and also the features.activeMidiInputs array
-  if (volume > 0) {
+  // If the volume is 0 then we need to remove the circle from the features.circles dict and also the features.activeMidiInputs array
+  if (volume === 0 || features.activeMidiInputs[note] !== undefined) {
+    features.circles[features.activeMidiInputs[note]].endTime = Date.now()
+    delete features.activeMidiInputs[note]
+  } else {
     const newCircle = {
       id: features.currentCircleIndex,
       note,
@@ -74,13 +94,6 @@ const handleMidi = (midiData) => {
     features.activeMidiInputs[note] = features.currentCircleIndex
     features.currentCircleIndex++
   }
-
-  // If the volume is 0 then we need to remove the circle from the features.circles dict and also the features.activeMidiInputs array
-  if (volume === 0) {
-    features.circles[features.activeMidiInputs[note]].endTime = Date.now()
-    delete features.activeMidiInputs[note]
-  }
-  console.log(features.activeMidiInputs)
 }
 
 const drawCanvas = async () => {
@@ -116,6 +129,9 @@ const drawCanvas = async () => {
   // Loop through all the features.circles and draw them
   ctx.strokeStyle = 'black'
   ctx.lineWidth = h / 600
+
+  allLines.length = 0
+
   for (const circle in features.circles) {
     const yPos = h - (features.circles[circle].note - features.minNote + 1) * noteStep
     const startRadius = h / 4000 * features.circles[circle].volume + h / 500
@@ -126,10 +142,36 @@ const drawCanvas = async () => {
     // Now we are going to draw a number of circles based on the duration of the note starting with the startRadius
     // and going up by h/500 for each 100ms of the duration
     for (let i = 0; i < circleDuration / 100; i++) {
-      const radius = startRadius + h / 200 * i
+      const radius = startRadius + h / 150 * i
+      const points = generateCirclePoints(radius, 90)
+      const middleX = features.circles[circle].xPos * w
+      const newLine = []
+      const middleY = yPos
       ctx.beginPath()
-      ctx.arc(features.circles[circle].xPos * w, yPos, radius, 0, Math.PI * 2)
+      // move to the first point ofset by the middleX and middleY
+      const startX = points[0].x + middleX
+      const startY = points[0].y + middleY
+      newLine.push({
+        x: startX / w,
+        y: startY / h
+      })
+      ctx.moveTo(startX, startY)
+      for (let j = 1; j < points.length; j++) {
+        const pointX = points[j].x + middleX
+        const pointY = points[j].y + middleY
+        newLine.push({
+          x: pointX / w,
+          y: pointY / h
+        })
+        ctx.lineTo(pointX, pointY)
+      }
+      newLine.push({
+        x: startX / w,
+        y: startY / h
+      })
+      ctx.lineTo(startX, startY) // Close the circle by connecting back to the start point
       ctx.stroke()
+      allLines.push(newLine)
     }
   }
 
@@ -139,6 +181,11 @@ const drawCanvas = async () => {
 
   // Set the last tick to now
   features.lastTick = nowTick
+
+  if (saveNextPass !== false) {
+    await autoDownloadSVG(saveNextPass)
+    saveNextPass = false
+  }
 
   // Draw everything again in the next animation frame, if we are animating
   if (animated) {
@@ -179,7 +226,12 @@ const init = async () => {
   // Handle all the keypresses here
   document.addEventListener('keypress', async (e) => {
     e = e || window.event
-    // Save the canvas as a PNG
+
+    if (e.key === '3') saveNextPass = 3
+    if (e.key === '4') saveNextPass = 4
+    if (e.key === '5') saveNextPass = 5
+    if (e.key === '6') saveNextPass = 6
+
     // if (e.key === 's') autoDownloadCanvas()
     // If the e.key is 'c' then we clear out the circles and activeMidiInputs
     if (e.key === 'c') {
@@ -194,7 +246,8 @@ const init = async () => {
       midiAccess => {
         midiAccess.inputs.forEach(midiInput => {
           midiInput.onmidimessage = (midiMessage) => {
-            if (midiMessage.currentTarget.name === 'Komplete Kontrol Virtual Output' && midiMessage.data.byteLength === 3) {
+            // console.log(midiMessage.currentTarget.name)
+            if ((midiMessage.currentTarget.name === 'Komplete Kontrol Virtual Output' || midiMessage.currentTarget.name === 'Kontakt 5 Virtual Output') && midiMessage.data.byteLength === 3) {
               handleMidi(midiMessage.data)
             }
           }
@@ -265,6 +318,87 @@ const layoutCanvas = async (windowObj = window) => {
 
   // Finally we draw the canvas!
   drawCanvas()
+}
+
+const autoDownloadSVG = async (size) => {
+  // Set the page width and height
+  let format = 'A5'
+  let pageWidth = 210
+  let pageHeight = 148
+  // Change the size to A4 or A6
+  if (size === 6) {
+    format = 'A6'
+    pageWidth = 148
+    pageHeight = 105
+  }
+  if (size === 4) {
+    format = 'A4'
+    pageWidth = 297
+    pageHeight = 210
+  }
+  if (size === 3) {
+    format = 'A3'
+    pageWidth = 420
+    pageHeight = 297
+  }
+
+  // Scale the whole design down
+  const scaleAmount = 0.95
+  const scaledLines = allLines.map(line =>
+    line.map(point => ({
+      x: ((point.x - 0.5) * scaleAmount) + 0.5,
+      y: ((point.y - 0.5) * scaleAmount) + 0.5
+    }))
+  )
+  const topBottomMargin = pageHeight * ((1 - scaleAmount) / 2)
+  const leftRightMargin = pageWidth * ((1 - scaleAmount) / 2)
+
+  const dateTime = new Date().toISOString().split('.')[0].replace(/:/g, '-').replace('T', '-')
+
+  let output = `<?xml version="1.0" standalone="no" ?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" 
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+  <svg version="1.1" id="lines" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+  x="0" y="0"
+  viewBox="0 0 ${pageWidth} ${pageHeight}"
+  width="${pageWidth}mm"
+  height="${pageHeight}mm" 
+  xml:space="preserve">
+  <g>
+  `
+  // Now loop through the all lines
+  for (let i = 0; i < scaledLines.length; i++) {
+    const line = scaledLines[i]
+    // Now we need to do this twice, once for the fill in white with no stroke, this is
+    // going to be used for the hidden line removal, and then once again with just the line at the top
+    const p0 = line[0]
+    output += '<path style="fill:none;stroke:#000000;stroke-width:0.3mm;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="'
+    output += `M${p0.x * pageWidth},${p0.y * pageHeight - 0.01} `
+    for (let j = 1; j < line.length; j++) {
+      const point = line[j]
+      output += `${point.x * pageWidth},${point.y * pageHeight - 0.01} `
+    }
+    output += '" />'
+  }
+
+  // Now we want to draw a margin around the page in solid red with no stroke
+  output += '<path style="fill:#FF0000;stroke:none" d="'
+  output += `M0,0 ${pageWidth},0 ${pageWidth},${pageHeight} 0,${pageHeight}, 0,${topBottomMargin} `
+  output += `${leftRightMargin},${topBottomMargin} ${leftRightMargin},${pageHeight - topBottomMargin} `
+  output += `${pageWidth - leftRightMargin},${pageHeight - topBottomMargin} ${pageWidth - leftRightMargin},${topBottomMargin}, 0,${topBottomMargin}`
+  output += '" />'
+  output += '</g></svg>'
+
+  const element = document.createElement('a')
+  element.setAttribute('download', `midicircles_${dateTime}_${format}.svg`)
+  element.style.display = 'none'
+  document.body.appendChild(element)
+  //  Blob code via gec @3Dgec https://twitter.com/3Dgec/status/1226018489862967297
+  element.setAttribute('href', window.URL.createObjectURL(new Blob([output], {
+    type: 'text/plain;charset=utf-8'
+  })))
+  element.click()
+  document.body.removeChild(element)
 }
 
 /*

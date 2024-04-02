@@ -178,7 +178,7 @@ const drawCanvas = async () => {
     autoSaveWhenFilled = false
   }
 
-  if (saveNextPass !== false || (autoSaveWhenFilled === true && joyLines.length === maxLines)) {
+  if (saveNextPass !== false) {
     await autoDownloadSVG(saveNextPass)
     saveNextPass = false
     autoSaveWhenFilled = false
@@ -225,17 +225,11 @@ const init = async () => {
   // Handle all the keypresses here
   document.addEventListener('keypress', async (e) => {
     e = e || window.event
-    // Save the canvas as a PNG
+
     if (e.key === '3') saveNextPass = 3
     if (e.key === '4') saveNextPass = 4
     if (e.key === '5') saveNextPass = 5
     if (e.key === '6') saveNextPass = 6
-
-    // If the e.key is 'c' then we clear out the circles and activeMidiInputs
-    if (e.key === 'c') {
-      features.circles = {}
-      features.activeMidiInputs = {}
-    }
   })
 
   // When the user clicks on the window we can hook up the audio listener
