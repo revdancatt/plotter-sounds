@@ -27,13 +27,15 @@ let nextFrame = null // requestAnimationFrame, and the ability to clear it
 let analyser = null
 let dataArray = null
 let startedCapture = false
-const features = {}
 const joyLines = []
 let saveNextPass = false
 const allLines = []
 const maxLines = 110
 let frameSkipper = 0
 const maxFrames = 0
+const maxColours = 4
+let currentFrame = 0
+const colours = ['#000000', '#000099', '#0000FF', 'red']
 const urlParams = new URLSearchParams(window.location.search)
 let autoSaveWhenFilled = urlParams.get('autoSaveWhenFilled') === 'true'
 let defaultSaveSize = 3
@@ -106,6 +108,10 @@ const drawCanvas = async () => {
 
       // Loop through all the joyLines
       allLines.length = 0
+      for (let i = 0; i < maxColours; i++) {
+        allLines.push([])
+      }
+
       for (let c = 0; c < joyLines.length; c++) {
         // Work out how much to offset the x and y position to set the circle in the middle of the canvas
         const border = w / 10
@@ -146,8 +152,12 @@ const drawCanvas = async () => {
           }
           // Stroke the path
           ctx.stroke()
-
-          allLines.push(line)
+          // We need to work out the index of the colour we are on
+          // using c and the maxColours we cycle round them, so we
+          // need the remainder of c after dividing by maxColours
+          const colourIndex = (c + currentFrame) % maxColours
+          ctx.strokeStyle = colours[colourIndex]
+          allLines[colourIndex].push(line)
 
           ctx.beginPath()
           ctx.moveTo(line2[0].x * w, line2[0].y * h)
@@ -158,7 +168,7 @@ const drawCanvas = async () => {
           // Stroke the path
           ctx.stroke()
 
-          allLines.push(line2)
+          allLines[colourIndex].push(line2)
         }
       }
     }
@@ -179,6 +189,7 @@ const drawCanvas = async () => {
   }
 
   if (saveNextPass !== false) {
+    console.log('allLines.length: ', allLines.length)
     await autoDownloadSVG(saveNextPass)
     saveNextPass = false
     autoSaveWhenFilled = false
@@ -190,6 +201,7 @@ const drawCanvas = async () => {
   if (animated) {
     nextFrame = window.requestAnimationFrame(drawCanvas)
   }
+  currentFrame++
 }
 
 // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
@@ -345,43 +357,46 @@ const autoDownloadSVG = async (size) => {
 
   const dateTime = new Date().toISOString().split('.')[0].replace(/:/g, '-').replace('T', '-')
 
-  let output = `<?xml version="1.0" standalone="no" ?>
-<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" 
-  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-  <svg version="1.1" id="lines" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
-  x="0" y="0"
-  viewBox="0 0 ${pageWidth} ${pageHeight}"
-  width="${pageWidth}mm"
-  height="${pageHeight}mm" 
-  xml:space="preserve">
-  <g>
-  `
-  // Now loop through the all lines
-  for (let i = 0; i < allLines.length; i++) {
-    const line = allLines[i]
-    // Now we need to do this twice, once for the fill in white with no stroke, this is
-    // going to be used for the hidden line removal, and then once again with just the line at the top
-    const p0 = line[0]
-    output += '<path style="fill:none;stroke:#000000;stroke-width:0.3mm;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="'
-    output += `M${p0.x * pageWidth},${p0.y * pageHeight - 0.01} `
-    for (let j = 1; j < line.length; j++) {
-      const point = line[j]
-      output += `${point.x * pageWidth},${point.y * pageHeight - 0.01} `
+  // Loop around trhe number of colours
+  for (let c = 0; c < maxColours; c++) {
+    let output = `<?xml version="1.0" standalone="no" ?>
+  <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" 
+    "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+    <svg version="1.1" id="lines" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+    x="0" y="0"
+    viewBox="0 0 ${pageWidth} ${pageHeight}"
+    width="${pageWidth}mm"
+    height="${pageHeight}mm" 
+    xml:space="preserve">
+    <g>
+    `
+    // Now loop through the all lines
+    for (let i = 0; i < allLines[c].length; i++) {
+      const line = allLines[c][i]
+      // Now we need to do this twice, once for the fill in white with no stroke, this is
+      // going to be used for the hidden line removal, and then once again with just the line at the top
+      const p0 = line[0]
+      output += '<path style="fill:none;stroke:#000000;stroke-width:0.3mm;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="'
+      output += `M${p0.x * pageWidth},${p0.y * pageHeight - 0.01} `
+      for (let j = 1; j < line.length; j++) {
+        const point = line[j]
+        output += `${point.x * pageWidth},${point.y * pageHeight - 0.01} `
+      }
+      output += '" />'
     }
-    output += '" />'
-  }
-  output += '</g></svg>'
+    output += '</g></svg>'
 
-  const element = document.createElement('a')
-  element.setAttribute('download', `soundwaves_${dateTime}_${format}.svg`)
-  element.style.display = 'none'
-  document.body.appendChild(element)
-  //  Blob code via gec @3Dgec https://twitter.com/3Dgec/status/1226018489862967297
-  element.setAttribute('href', window.URL.createObjectURL(new Blob([output], {
-    type: 'text/plain;charset=utf-8'
-  })))
-  element.click()
-  document.body.removeChild(element)
+    const element = document.createElement('a')
+    element.setAttribute('download', `soundwaves_${dateTime}_${format}_${c}.svg`)
+    element.style.display = 'none'
+    document.body.appendChild(element)
+    //  Blob code via gec @3Dgec https://twitter.com/3Dgec/status/1226018489862967297
+    element.setAttribute('href', window.URL.createObjectURL(new Blob([output], {
+      type: 'text/plain;charset=utf-8'
+    })))
+    element.click()
+    document.body.removeChild(element)
+  }
 }
 /*
  * When everything in the DOM is loaded then we start everything off by calling init()
