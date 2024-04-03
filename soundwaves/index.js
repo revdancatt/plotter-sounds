@@ -35,7 +35,26 @@ let frameSkipper = 0
 const maxFrames = 0
 const maxColours = 4
 let currentFrame = 0
-const colours = ['#000000', '#000099', '#0000FF', 'red']
+const sourceColours = [
+  ['#606c38', '#283618', '#fefae0', '#dda15e', '#bc6c25'],
+  ['#03045e', '#0077b6', '#00b4d8', '#90e0ef', '#caf0f8'],
+  ['#8ecae6', '#219ebc', '#023047', '#ffb703', '#fb8500'],
+  ['#003049', '#d62828', '#f77f00', '#fcbf49', '#eae2b7'],
+  ['#ffbe0b', '#fb5607', '#ff006e', '#8338ec', '#3a86ff'],
+  ['#e63946', '#f1faee', '#a8dadc', '#457b9d', '#1d3557'],
+  ['#9b5de5', '#f15bb5', '#fee440', '#00bbf9', '#00f5d4'],
+  ['#264653', '#2a9d8f', '#e9c46a', '#f4a261', '#e76f51'],
+  ['#2b2d42', '#8d99ae', '#edf2f4', '#ef233c', '#d90429'],
+  ['#006d77', '#83c5be', '#edf6f9', '#ffddd2', '#e29578'],
+  ['#10002b', '#240046', '#3c096c', '#5a189a', '#7b2cbf'],
+  ['#f72585', '#7209b7', '#3a0ca3', '#4361ee', '#4cc9f0'],
+  ['#f94144', '#f3722c', '#f8961e', '#f9844a', '#f9c74f'],
+  ['#4d908e', '#577590', '#43aa8b', '#90be6d', '#f9c74f'],
+  ['#277da1', '#577590', '#4d908e', '#43aa8b', '#f9c74f'],
+  ['#f94144', '#f3722c', '#f8961e', '#f9c74f', '#90be6d'],
+  ['#355070', '#6d597a', '#b56576', '#e56b6f', '#eaac8b']
+]
+const colours = sourceColours[Math.floor(Math.random() * sourceColours.length)]
 const urlParams = new URLSearchParams(window.location.search)
 let autoSaveWhenFilled = urlParams.get('autoSaveWhenFilled') === 'true'
 let defaultSaveSize = 3

@@ -24,6 +24,28 @@ let resizeTmr = null
 // This is also optional, and it used if we are animating the design
 const animated = true
 const allLines = []
+const maxColours = 2
+const currentFrame = 0
+const sourceColours = [
+  ['#606c38', '#283618', '#fefae0', '#dda15e', '#bc6c25'],
+  ['#03045e', '#0077b6', '#00b4d8', '#90e0ef', '#caf0f8'],
+  ['#8ecae6', '#219ebc', '#023047', '#ffb703', '#fb8500'],
+  ['#003049', '#d62828', '#f77f00', '#fcbf49', '#eae2b7'],
+  ['#ffbe0b', '#fb5607', '#ff006e', '#8338ec', '#3a86ff'],
+  ['#e63946', '#f1faee', '#a8dadc', '#457b9d', '#1d3557'],
+  ['#9b5de5', '#f15bb5', '#fee440', '#00bbf9', '#00f5d4'],
+  ['#264653', '#2a9d8f', '#e9c46a', '#f4a261', '#e76f51'],
+  ['#2b2d42', '#8d99ae', '#edf2f4', '#ef233c', '#d90429'],
+  ['#006d77', '#83c5be', '#edf6f9', '#ffddd2', '#e29578'],
+  ['#10002b', '#240046', '#3c096c', '#5a189a', '#7b2cbf'],
+  ['#f72585', '#7209b7', '#3a0ca3', '#4361ee', '#4cc9f0'],
+  ['#f94144', '#f3722c', '#f8961e', '#f9844a', '#f9c74f'],
+  ['#4d908e', '#577590', '#43aa8b', '#90be6d', '#f9c74f'],
+  ['#277da1', '#577590', '#4d908e', '#43aa8b', '#f9c74f'],
+  ['#f94144', '#f3722c', '#f8961e', '#f9c74f', '#90be6d'],
+  ['#355070', '#6d597a', '#b56576', '#e56b6f', '#eaac8b']
+]
+const colours = sourceColours[Math.floor(Math.random() * sourceColours.length)]
 let saveNextPass = false
 let nextFrame = null // requestAnimationFrame, and the ability to clear it
 
@@ -113,7 +135,7 @@ const drawCanvas = async () => {
 
   // Draw a vertical red line at the vertLine position (where vertLine is a value from 0-1 acting as a percent of the width)
   ctx.strokeStyle = 'red'
-  ctx.lineWidth = 2
+  ctx.lineWidth = w / 1000
   ctx.beginPath()
   ctx.moveTo(features.vertLine * w, 0)
   ctx.lineTo(features.vertLine * w, h)
@@ -127,10 +149,13 @@ const drawCanvas = async () => {
   const noteStep = h / (features.maxNote - features.minNote + 2)
 
   // Loop through all the features.circles and draw them
-  ctx.strokeStyle = 'black'
-  ctx.lineWidth = h / 600
+  ctx.lineWidth = h / 400
 
   allLines.length = 0
+  for (let i = 0; i < maxColours; i++) {
+    allLines.push([])
+  }
+  let c = 0
 
   for (const circle in features.circles) {
     const yPos = h - (features.circles[circle].note - features.minNote + 1) * noteStep
@@ -142,6 +167,9 @@ const drawCanvas = async () => {
     // Now we are going to draw a number of circles based on the duration of the note starting with the startRadius
     // and going up by h/500 for each 100ms of the duration
     for (let i = 0; i < circleDuration / 100; i++) {
+      const colourIndex = (c + currentFrame) % maxColours
+      ctx.strokeStyle = colours[colourIndex]
+
       const radius = startRadius + h / 150 * i
       const points = generateCirclePoints(radius, 90)
       const middleX = features.circles[circle].xPos * w
@@ -171,7 +199,8 @@ const drawCanvas = async () => {
       })
       ctx.lineTo(startX, startY) // Close the circle by connecting back to the start point
       ctx.stroke()
-      allLines.push(newLine)
+      allLines[colourIndex].push(newLine)
+      c++
     }
   }
 
@@ -344,18 +373,19 @@ const autoDownloadSVG = async (size) => {
 
   // Scale the whole design down
   const scaleAmount = 0.95
-  const scaledLines = allLines.map(line =>
-    line.map(point => ({
-      x: ((point.x - 0.5) * scaleAmount) + 0.5,
-      y: ((point.y - 0.5) * scaleAmount) + 0.5
-    }))
-  )
   const topBottomMargin = pageHeight * ((1 - scaleAmount) / 2)
   const leftRightMargin = pageWidth * ((1 - scaleAmount) / 2)
 
   const dateTime = new Date().toISOString().split('.')[0].replace(/:/g, '-').replace('T', '-')
+  for (let c = 0; c < maxColours; c++) {
+    const scaledLines = allLines[c].map(line =>
+      line.map(point => ({
+        x: ((point.x - 0.5) * scaleAmount) + 0.5,
+        y: ((point.y - 0.5) * scaleAmount) + 0.5
+      }))
+    )
 
-  let output = `<?xml version="1.0" standalone="no" ?>
+    let output = `<?xml version="1.0" standalone="no" ?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" 
   "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
   <svg version="1.1" id="lines" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
@@ -366,39 +396,40 @@ const autoDownloadSVG = async (size) => {
   xml:space="preserve">
   <g>
   `
-  // Now loop through the all lines
-  for (let i = 0; i < scaledLines.length; i++) {
-    const line = scaledLines[i]
-    // Now we need to do this twice, once for the fill in white with no stroke, this is
-    // going to be used for the hidden line removal, and then once again with just the line at the top
-    const p0 = line[0]
-    output += '<path style="fill:none;stroke:#000000;stroke-width:0.3mm;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="'
-    output += `M${p0.x * pageWidth},${p0.y * pageHeight - 0.01} `
-    for (let j = 1; j < line.length; j++) {
-      const point = line[j]
-      output += `${point.x * pageWidth},${point.y * pageHeight - 0.01} `
+    // Now loop through the all lines
+    for (let i = 0; i < scaledLines.length; i++) {
+      const line = scaledLines[i]
+      // Now we need to do this twice, once for the fill in white with no stroke, this is
+      // going to be used for the hidden line removal, and then once again with just the line at the top
+      const p0 = line[0]
+      output += '<path style="fill:none;stroke:#000000;stroke-width:0.3mm;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" d="'
+      output += `M${p0.x * pageWidth},${p0.y * pageHeight - 0.01} `
+      for (let j = 1; j < line.length; j++) {
+        const point = line[j]
+        output += `${point.x * pageWidth},${point.y * pageHeight - 0.01} `
+      }
+      output += '" />'
     }
+
+    // Now we want to draw a margin around the page in solid red with no stroke
+    output += '<path style="fill:#FF0000;stroke:none" d="'
+    output += `M0,0 ${pageWidth},0 ${pageWidth},${pageHeight} 0,${pageHeight}, 0,${topBottomMargin} `
+    output += `${leftRightMargin},${topBottomMargin} ${leftRightMargin},${pageHeight - topBottomMargin} `
+    output += `${pageWidth - leftRightMargin},${pageHeight - topBottomMargin} ${pageWidth - leftRightMargin},${topBottomMargin}, 0,${topBottomMargin}`
     output += '" />'
+    output += '</g></svg>'
+
+    const element = document.createElement('a')
+    element.setAttribute('download', `midicircles_${dateTime}_${format}_${c}.svg`)
+    element.style.display = 'none'
+    document.body.appendChild(element)
+    //  Blob code via gec @3Dgec https://twitter.com/3Dgec/status/1226018489862967297
+    element.setAttribute('href', window.URL.createObjectURL(new Blob([output], {
+      type: 'text/plain;charset=utf-8'
+    })))
+    element.click()
+    document.body.removeChild(element)
   }
-
-  // Now we want to draw a margin around the page in solid red with no stroke
-  output += '<path style="fill:#FF0000;stroke:none" d="'
-  output += `M0,0 ${pageWidth},0 ${pageWidth},${pageHeight} 0,${pageHeight}, 0,${topBottomMargin} `
-  output += `${leftRightMargin},${topBottomMargin} ${leftRightMargin},${pageHeight - topBottomMargin} `
-  output += `${pageWidth - leftRightMargin},${pageHeight - topBottomMargin} ${pageWidth - leftRightMargin},${topBottomMargin}, 0,${topBottomMargin}`
-  output += '" />'
-  output += '</g></svg>'
-
-  const element = document.createElement('a')
-  element.setAttribute('download', `midicircles_${dateTime}_${format}.svg`)
-  element.style.display = 'none'
-  document.body.appendChild(element)
-  //  Blob code via gec @3Dgec https://twitter.com/3Dgec/status/1226018489862967297
-  element.setAttribute('href', window.URL.createObjectURL(new Blob([output], {
-    type: 'text/plain;charset=utf-8'
-  })))
-  element.click()
-  document.body.removeChild(element)
 }
 
 /*
