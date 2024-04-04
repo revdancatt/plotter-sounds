@@ -24,7 +24,7 @@ let resizeTmr = null
 // This is also optional, and it used if we are animating the design
 const animated = true
 const allLines = []
-const maxColours = 2
+const maxColours = 5
 const currentFrame = 0
 const sourceColours = [
   ['#606c38', '#283618', '#fefae0', '#dda15e', '#bc6c25'],

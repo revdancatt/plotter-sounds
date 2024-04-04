@@ -163,6 +163,8 @@ const drawCanvas = async () => {
 
         // Now we draw the line
         if (line.length > 0) {
+          const colourIndex = (c + currentFrame) % maxColours
+          ctx.strokeStyle = colours[colourIndex]
           ctx.beginPath()
           ctx.moveTo(line[0].x * w, line[0].y * h)
           // Loop through the points, and draw a line to the next point
@@ -174,8 +176,6 @@ const drawCanvas = async () => {
           // We need to work out the index of the colour we are on
           // using c and the maxColours we cycle round them, so we
           // need the remainder of c after dividing by maxColours
-          const colourIndex = (c + currentFrame) % maxColours
-          ctx.strokeStyle = colours[colourIndex]
           allLines[colourIndex].push(line)
 
           ctx.beginPath()
