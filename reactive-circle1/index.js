@@ -221,6 +221,7 @@ const init = async () => {
   document.addEventListener('keypress', async (e) => {
     e = e || window.event
     // Save the canvas as a PNG
+    if (e.key === '3') saveNextPass = 3
     if (e.key === '4') saveNextPass = 4
     if (e.key === '5') saveNextPass = 5
     if (e.key === '6') saveNextPass = 6
@@ -324,18 +325,23 @@ const layoutCanvas = async (windowObj = window) => {
 const autoDownloadSVG = async (size) => {
   // Set the page width and height
   let format = 'A5'
-  let pageWidth = 148
-  let pageHeight = 210
+  let pageWidth = 210
+  let pageHeight = 148
   // Change the size to A4 or A6
   if (size === 6) {
     format = 'A6'
-    pageWidth = 105
-    pageHeight = 148
+    pageWidth = 148
+    pageHeight = 105
   }
   if (size === 4) {
     format = 'A4'
-    pageWidth = 210
-    pageHeight = 420
+    pageWidth = 297
+    pageHeight = 210
+  }
+  if (size === 3) {
+    format = 'A3'
+    pageWidth = 420
+    pageHeight = 297
   }
 
   const dateTime = new Date().toISOString().split('.')[0].replace(/:/g, '-').replace('T', '-')

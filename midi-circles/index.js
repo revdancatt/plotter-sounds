@@ -24,7 +24,7 @@ let resizeTmr = null
 // This is also optional, and it used if we are animating the design
 const animated = true
 const allLines = []
-const maxColours = 5
+const maxColours = 4
 const currentFrame = 0
 const sourceColours = [
   ['#606c38', '#283618', '#fefae0', '#dda15e', '#bc6c25'],
@@ -413,9 +413,9 @@ const autoDownloadSVG = async (size) => {
 
     // Now we want to draw a margin around the page in solid red with no stroke
     output += '<path style="fill:#FF0000;stroke:none" d="'
-    output += `M0,0 ${pageWidth},0 ${pageWidth},${pageHeight} 0,${pageHeight}, 0,${topBottomMargin} `
+    output += `M-5,-5 ${pageWidth + 5},-5 ${pageWidth + 5},${pageHeight + 5} -5,${pageHeight + 5}, -5,${topBottomMargin} `
     output += `${leftRightMargin},${topBottomMargin} ${leftRightMargin},${pageHeight - topBottomMargin} `
-    output += `${pageWidth - leftRightMargin},${pageHeight - topBottomMargin} ${pageWidth - leftRightMargin},${topBottomMargin}, 0,${topBottomMargin}`
+    output += `${pageWidth - leftRightMargin},${pageHeight - topBottomMargin} ${pageWidth - leftRightMargin},${topBottomMargin}, -5,${topBottomMargin}`
     output += '" />'
     output += '</g></svg>'
 
